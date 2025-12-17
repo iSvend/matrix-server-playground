@@ -67,6 +67,94 @@ def list_projects():
 
     return JSONResponse({"projects": projects})
 
+@app.post("/projects/new/{project_name}")
+def create_project(project_name: str):
+    # Basic safety: allow simple names only
+    if not project_name.replace("-", "").replace("_", "").isalnum():
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid project name"}
+        )
+
+    project_dir = os.path.join(WEB_DIR, project_name)
+
+    if os.path.exists(project_dir):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Project already exists"}
+        )
+
+    os.makedirs(project_dir)
+
+    # --- Starter files ---
+    index_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>{project_name}</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>{project_name}</h1>
+<p>This site was created from the Matrix.</p>
+
+<script src="script.js"></script>
+</body>
+</html>
+"""
+
+    style_css = """body {
+    font-family: sans-serif;
+    text-align: center;
+    margin-top: 50px;
+}
+"""
+
+    script_js = """console.log("Hello from your new project!");
+"""
+
+    with open(os.path.join(project_dir, "index.html"), "w", encoding="utf-8") as f:
+        f.write(index_html)
+
+    with open(os.path.join(project_dir, "style.css"), "w", encoding="utf-8") as f:
+        f.write(style_css)
+
+    with open(os.path.join(project_dir, "script.js"), "w", encoding="utf-8") as f:
+        f.write(script_js)
+
+    return {"status": "created", "project": project_name}
+
+# delete project
+import shutil
+
+@app.delete("/projects/delete/{project_name}")
+def delete_project(project_name: str):
+    # Same name safety rules as creation
+    if not project_name.replace("-", "").replace("_", "").isalnum():
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid project name"}
+        )
+
+    project_dir = os.path.join(WEB_DIR, project_name)
+
+    if not os.path.exists(project_dir):
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Project not found"}
+        )
+
+    # Extra safety: ensure it's inside /web
+    if not os.path.commonpath([WEB_DIR, project_dir]) == WEB_DIR:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid delete path"}
+        )
+
+    shutil.rmtree(project_dir)
+
+    return {"status": "deleted", "project": project_name}
+
 
 # =========================
 # STATIC FILE SERVERS (LAST)
