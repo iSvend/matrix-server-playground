@@ -1,10 +1,16 @@
 @echo off
 cd /d %~dp0
 
-echo === CONNECTING TO THE MATRIX ===
+set PORT=8000
+
+echo === CONNECTING TO THE MATRIX ON PORT %PORT% ===
 echo.
 
-python\python.exe -m uvicorn app:app --host 127.0.0.1 --port 8000
+REM Open browser first (non-blocking)
+start http://localhost:%PORT%
 
-start http://localhost:8000
-pause
+REM Give browser a moment (optional)
+timeout /t 1 > nul
+
+REM Start the server (this blocks, as intended)
+python\python.exe -m uvicorn app:app --host 127.0.0.1 --port %PORT%
