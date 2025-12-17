@@ -1,0 +1,28 @@
+body {
+    background: black;
+    color: lime;
+    font-family: monospace;
+    padding: 20px;
+}
+
+#terminal {
+    height: 70vh;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    margin-bottom: 10px;
+}
+
+#input-line {
+    display: flex;
+    align-items: center;
+}
+
+#command {
+    background: black;
+    color: lime;
+    border: none;
+    outline: none;
+    font-family: monospace;
+    font-size: 16px;
+    width: 100%;
+}

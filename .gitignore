@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Python embeddable / runtime
+python/Lib/site-packages/
+python/*.zip
+python/*.dll
+python/*.pyd
+
+# Optional: if you ever add a venv later
+venv/
+
+# Editor settings
+.vscode/
+.idea/
