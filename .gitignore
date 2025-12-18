@@ -21,3 +21,8 @@ venv/
 # Editor settings
 .vscode/
 .idea/
+
+# PyInstaller
+/dist/
+/build/
+*.spec
