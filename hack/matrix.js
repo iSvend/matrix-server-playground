@@ -32,9 +32,9 @@ function runCommand() {
         print("  ls                 list projects");
         print("  open <name>        open a project");
         print("  new <name>         create a new project");
-        print("  delete <name>         delete a project");
-        print("  hack               trigger matrix");
+        print("  delete <name>      delete a project");
         print("  clear              clear screen");
+        print("  hack               ----");
         return;
     }
 
