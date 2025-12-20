@@ -1,7 +1,7 @@
 @echo off
 cd /d %~dp0
 
-set PORT=67
+set PORT=8000
 
 echo === CONNECTING TO THE MATRIX ON PORT %PORT% ===
 echo.
@@ -14,6 +14,13 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%PORT%') do (
 
 REM --- Open browser ---
 start http://localhost:%PORT%
+echo Starting server...
+echo.
 
-REM --- Start server (blocks, as intended) ---
+REM --- Start server (BLOCKING) ---
 python\python.exe -m uvicorn app:app --host 127.0.0.1 --port %PORT%
+
+REM --- If we ever get here, server exited ---
+echo.
+echo === SERVER STOPPED ===
+pause

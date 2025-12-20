@@ -31,6 +31,7 @@ function runCommand() {
         print("  help               show commands");
         print("  ls                 list projects");
         print("  open <name>        open a project");
+        print("  edit <name>        edit project html");
         print("  new <name>         create a new project");
         print("  delete <name>      delete a project");
         print("  clear              clear screen");
@@ -146,6 +147,14 @@ function runCommand() {
     if (cmd.startsWith("open ")) {
         const name = cmd.split(" ")[1];
         window.open(`/web/${name}/`, "_blank");
+        return;
+    }
+
+    // ---- EDIT PROJECT ----
+    if (cmd.startsWith("edit ")) {
+        const name = cmd.split(" ")[1];
+        print(`Opening editor for '${name}'...`);
+        window.open(`/hack/editor.html?project=${encodeURIComponent(name)}`, "_blank");
         return;
     }
 

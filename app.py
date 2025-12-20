@@ -1,46 +1,35 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Body, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
-from matrix import matrix_burst
+from pydantic import BaseModel
+from pathlib import Path
 import threading
-import os
+import shutil
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from matrix import matrix_burst
 
-HACK_DIR = os.path.join(BASE_DIR, "hack")
-WEB_DIR  = os.path.join(BASE_DIR, "web")
+# =========================
+# PATH SETUP (SINGLE SOURCE OF TRUTH)
+# =========================
+
+BASE_DIR = Path(__file__).resolve().parent
+HACK_DIR = BASE_DIR / "hack"
+WEB_DIR  = BASE_DIR / "web"
+
+# Ensure folders exist
+HACK_DIR.mkdir(exist_ok=True)
+WEB_DIR.mkdir(exist_ok=True)
 
 app = FastAPI()
 
 # =========================
-# ROUTES (must come FIRST)
+# CORE ROUTES
 # =========================
 
 @app.get("/")
 def hack_index():
     """Matrix console home"""
-    return FileResponse(os.path.join(HACK_DIR, "index.html"))
-
-
-@app.get("/web")
-@app.get("/web/")
-def web_root():
-    """Root web workspace"""
-    return FileResponse(os.path.join(WEB_DIR, "index.html"))
-
-
-@app.get("/web/{project}")
-@app.get("/web/{project}/")
-def web_project(project: str):
-    """Serve a project's index.html"""
-    index_file = os.path.join(WEB_DIR, project, "index.html")
-    if os.path.exists(index_file):
-        return FileResponse(index_file)
-
-    return JSONResponse(
-        status_code=404,
-        content={"error": "Project not found"}
-    )
+    return FileResponse(HACK_DIR / "index.html")
 
 
 @app.get("/hack-trigger")
@@ -50,44 +39,33 @@ def hack_trigger():
     return {"status": "ACCESS GRANTED"}
 
 
+# =========================
+# PROJECT MANAGEMENT
+# =========================
+
 @app.get("/projects")
 def list_projects():
-    """List valid web projects"""
     projects = []
+    for p in WEB_DIR.iterdir():
+        if p.is_dir() and (p / "index.html").exists():
+            projects.append(p.name)
+    return {"projects": sorted(projects)}
 
-    if not os.path.exists(WEB_DIR):
-        return JSONResponse({"projects": projects})
-
-    for name in os.listdir(WEB_DIR):
-        path = os.path.join(WEB_DIR, name)
-        if os.path.isdir(path):
-            index_file = os.path.join(path, "index.html")
-            if os.path.exists(index_file):
-                projects.append(name)
-
-    return JSONResponse({"projects": projects})
 
 @app.post("/projects/new/{project_name}")
 def create_project(project_name: str):
-    # Basic safety: allow simple names only
     if not project_name.replace("-", "").replace("_", "").isalnum():
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Invalid project name"}
-        )
+        raise HTTPException(status_code=400, detail="Invalid project name")
 
-    project_dir = os.path.join(WEB_DIR, project_name)
+    project_dir = WEB_DIR / project_name
 
-    if os.path.exists(project_dir):
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Project already exists"}
-        )
+    if project_dir.exists():
+        raise HTTPException(status_code=400, detail="Project already exists")
 
-    os.makedirs(project_dir)
+    project_dir.mkdir()
 
-    # --- Starter files ---
-    index_html = f"""<!DOCTYPE html>
+    (project_dir / "index.html").write_text(
+        f"""<!DOCTYPE html>
 <html>
 <head>
     <title>{project_name}</title>
@@ -101,67 +79,122 @@ def create_project(project_name: str):
 <script src="script.js"></script>
 </body>
 </html>
-"""
+""",
+        encoding="utf-8"
+    )
 
-    style_css = """body {
+    (project_dir / "style.css").write_text(
+        """body {
     font-family: sans-serif;
     text-align: center;
     margin-top: 50px;
 }
-"""
+""",
+        encoding="utf-8"
+    )
 
-    script_js = """console.log("Hello from your new project!");
-"""
-
-    with open(os.path.join(project_dir, "index.html"), "w", encoding="utf-8") as f:
-        f.write(index_html)
-
-    with open(os.path.join(project_dir, "style.css"), "w", encoding="utf-8") as f:
-        f.write(style_css)
-
-    with open(os.path.join(project_dir, "script.js"), "w", encoding="utf-8") as f:
-        f.write(script_js)
+    (project_dir / "script.js").write_text(
+        """console.log("Hello from your new project!");""",
+        encoding="utf-8"
+    )
 
     return {"status": "created", "project": project_name}
 
-# delete project
-import shutil
 
 @app.delete("/projects/delete/{project_name}")
 def delete_project(project_name: str):
-    # Same name safety rules as creation
     if not project_name.replace("-", "").replace("_", "").isalnum():
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Invalid project name"}
-        )
+        raise HTTPException(status_code=400, detail="Invalid project name")
 
-    project_dir = os.path.join(WEB_DIR, project_name)
+    project_dir = WEB_DIR / project_name
 
-    if not os.path.exists(project_dir):
-        return JSONResponse(
-            status_code=404,
-            content={"error": "Project not found"}
-        )
-
-    # Extra safety: ensure it's inside /web
-    if not os.path.commonpath([WEB_DIR, project_dir]) == WEB_DIR:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Invalid delete path"}
-        )
+    if not project_dir.exists():
+        raise HTTPException(status_code=404, detail="Project not found")
 
     shutil.rmtree(project_dir)
-
     return {"status": "deleted", "project": project_name}
+
+
+# =========================
+# IN-BROWSER EDITOR (PHASE 1 + 2)
+# =========================
+
+ALLOWED_EXTS = {".html", ".css", ".js"}
+
+class FileUpdate(BaseModel):
+    content: str
+
+
+def safe_editor_path(project: str, file: str) -> Path:
+    if not project.replace("-", "").replace("_", "").isalnum():
+        raise HTTPException(status_code=400, detail="Invalid project name")
+
+    if ".." in file or "/" in file or "\\" in file:
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    path = (WEB_DIR / project / file).resolve()
+
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if path.suffix.lower() not in ALLOWED_EXTS:
+        raise HTTPException(status_code=400, detail="File type not allowed")
+
+    if WEB_DIR not in path.parents:
+        raise HTTPException(status_code=400, detail="Invalid file location")
+
+    return path
+
+
+@app.get("/edit/file")
+def read_file(
+    project: str = Query(...),
+    file: str = Query("index.html")
+):
+    path = safe_editor_path(project, file)
+    return {"content": path.read_text(encoding="utf-8")}
+
+
+@app.post("/edit/file")
+def write_file(
+    project: str = Query(...),
+    file: str = Query("index.html"),
+    data: FileUpdate = Body(...)
+):
+    path = safe_editor_path(project, file)
+    path.write_text(data.content, encoding="utf-8")
+    print("WRITE LENGTH:", len(data.content))
+    print("WRITE PREVIEW:", data.content[:200])
+
+    print("[EDITOR WRITE]", path)
+    print("WEB_DIR AT RUNTIME:", WEB_DIR)
+    return {"status": "saved"}
+
+
+@app.get("/edit/list")
+def list_files(project: str):
+    if not project.replace("-", "").replace("_", "").isalnum():
+        raise HTTPException(status_code=400, detail="Invalid project name")
+
+    project_dir = (WEB_DIR / project).resolve()
+
+    if not project_dir.exists():
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if WEB_DIR not in project_dir.parents:
+        raise HTTPException(status_code=400, detail="Invalid project location")
+
+    files = [
+        f.name for f in project_dir.iterdir()
+        if f.is_file() and f.suffix.lower() in ALLOWED_EXTS
+    ]
+
+    return {"files": sorted(files)}
 
 
 # =========================
 # STATIC FILE SERVERS (LAST)
 # =========================
 
-# Matrix UI assets (CSS/JS)
 app.mount("/hack", StaticFiles(directory=HACK_DIR), name="hack")
-
-# Web project assets (CSS/JS/images inside projects)
-app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
+app.mount("/web", StaticFiles(directory=WEB_DIR, html=True), name="web")

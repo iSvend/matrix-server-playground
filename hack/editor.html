@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Matrix Editor</title>
+
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="https://unpkg.com/codemirror@5/lib/codemirror.css">
+    <script src="https://unpkg.com/codemirror@5/lib/codemirror.js"></script>
+    <script src="https://unpkg.com/codemirror@5/mode/htmlmixed/htmlmixed.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            background: black;
+            color: lime;
+            font-family: monospace;
+        }
+
+        #topbar {
+            padding: 8px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            border-bottom: 1px solid #0f0;
+        }
+
+        #editor {
+            height: calc(100vh - 40px);
+        }
+
+        button {
+            background: black;
+            color: lime;
+            border: 1px solid lime;
+            padding: 4px 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div id="topbar">
+    <span>Project: <b id="projectName"></b></span>
+    <button id="saveBtn">SAVE</button>
+    <button id="openBtn">OPEN SITE</button>
+    <span id="status"></span>
+</div>
+
+<div style="display:flex; height:calc(100vh - 40px);">
+
+    <div id="sidebar" style="width:200px; border-right:1px solid lime;"></div>
+
+    <div style="flex:1;">
+        <textarea id="editor"></textarea>
+    </div>
+
+    <iframe id="preview" style="width:40%; border-left:1px solid lime;"></iframe>
+
+</div>
+
+
+<script src="/hack/editor.js"></script>
+</body>
+</html>
