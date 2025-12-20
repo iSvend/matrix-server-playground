@@ -54,6 +54,7 @@ def list_projects():
 
 @app.post("/projects/new/{project_name}")
 def create_project(project_name: str):
+    # Allow simple, safe names only
     if not project_name.replace("-", "").replace("_", "").isalnum():
         raise HTTPException(status_code=400, detail="Invalid project name")
 
@@ -64,42 +65,155 @@ def create_project(project_name: str):
 
     project_dir.mkdir()
 
-    (project_dir / "index.html").write_text(
-        f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>{project_name}</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+    index_html = f"""<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>{project_name}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<h1>{project_name}</h1>
-<p>This site was created from the Matrix.</p>
+        <!-- Styles -->
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
 
-<script src="script.js"></script>
-</body>
-</html>
-""",
-        encoding="utf-8"
-    )
+    <header class="site-header">
+        <div class="container">
+            <h1>{project_name}</h1>
+            <p class="tagline">Built inside the Matrix</p>
+        </div>
+    </header>
 
-    (project_dir / "style.css").write_text(
-        """body {
-    font-family: sans-serif;
-    text-align: center;
-    margin-top: 50px;
-}
-""",
-        encoding="utf-8"
-    )
+    <main class="container">
+        <section class="card">
+            <h2>Welcome 👋</h2>
+            <p>
+                This is your new website.  
+                Edit the HTML, CSS, and JavaScript directly from the Matrix editor.
+            </p>
 
-    (project_dir / "script.js").write_text(
-        """console.log("Hello from your new project!");""",
-        encoding="utf-8"
-    )
+            <button id="actionBtn">Click me</button>
+        </section>
+    </main>
 
-    return {"status": "created", "project": project_name}
+    <footer class="site-footer">
+        <div class="container">
+            <p>© {project_name}</p>
+        </div>
+    </footer>
 
+    <script src="script.js"></script>
+    </body>
+    </html>
+    """
+
+    style_css = """/* === Modern Starter Styles === */
+
+    :root {
+        --bg: #0f172a;
+        --card: #111827;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --accent: #22c55e;
+        --border: #1f2933;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+            Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(180deg, #020617, var(--bg));
+        color: var(--text);
+        line-height: 1.6;
+    }
+
+    /* Layout */
+    .container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    /* Header */
+    .site-header {
+        border-bottom: 1px solid var(--border);
+    }
+
+    .site-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+    }
+
+    .tagline {
+        margin-top: 8px;
+        color: var(--muted);
+    }
+
+    /* Card */
+    .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 32px;
+        margin-top: 40px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+        margin-top: 0;
+    }
+
+    /* Button */
+    button {
+        margin-top: 20px;
+        padding: 12px 20px;
+        font-size: 1rem;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        background: var(--accent);
+        color: #022c22;
+        font-weight: 600;
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(34, 197, 94, 0.35);
+    }
+
+    /* Footer */
+    .site-footer {
+        margin-top: 80px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+    """
+
+    script_js = """// === Modern Starter Script ===
+
+    console.log("Site loaded");
+
+    document.getElementById("actionBtn").addEventListener("click", () => {
+        alert("Hello from the Matrix 👾");
+    });
+    """
+
+
+    (project_dir / "index.html").write_text(index_html, encoding="utf-8")
+    (project_dir / "style.css").write_text(style_css, encoding="utf-8")
+    (project_dir / "script.js").write_text(script_js, encoding="utf-8")
+
+    return {
+        "status": "created",
+        "project": project_name,
+        "files": ["index.html", "style.css", "script.js"]
+    }
 
 @app.delete("/projects/delete/{project_name}")
 def delete_project(project_name: str):
