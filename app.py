@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Body, HTTPException, Query
+from fastapi import FastAPI, Body, HTTPException, Query, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -259,6 +259,107 @@ def safe_editor_path(project: str, file: str) -> Path:
 
     return path
 
+# =========================
+# FOLDER UPLOAD (DIRECTORY UPLOAD)
+# =========================
+
+UPLOAD_ALLOWED_EXTS = {
+    ".html", ".css", ".js",
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico",
+    ".txt", ".json", ".map"
+}
+
+def _is_safe_project_name(name: str) -> bool:
+    return bool(name) and name.replace("-", "").replace("_", "").isalnum()
+
+def _safe_relpath(rel: str) -> Path:
+    """
+    Convert a client-provided relative path to a safe Path (no .., no absolute).
+    """
+    rel = rel.replace("\\", "/").lstrip("/")  # normalize
+    if not rel or rel.startswith("../") or "/../" in rel or rel == "..":
+        raise HTTPException(status_code=400, detail="Invalid relative path")
+    p = Path(rel)
+    if p.is_absolute():
+        raise HTTPException(status_code=400, detail="Absolute paths not allowed")
+    # Also block any '..' segments
+    if any(part == ".." for part in p.parts):
+        raise HTTPException(status_code=400, detail="Invalid path traversal")
+    return p
+
+@app.post("/upload/project")
+async def upload_project_folder(
+    project_name: str = Form(...),
+    root_folder: str = Form(...),
+    overwrite: bool = Form(False),
+    files: list[UploadFile] = File(...)
+):
+    """
+    Upload a whole folder (from <input webkitdirectory>) and store it as /web/<project_name>/...
+    Client sends file.filename like: "<root_folder>/subdir/file.ext"
+    """
+    if not _is_safe_project_name(project_name):
+        raise HTTPException(status_code=400, detail="Invalid project name")
+
+    if not root_folder:
+        raise HTTPException(status_code=400, detail="Missing root folder")
+
+    dest_dir = (WEB_DIR / project_name).resolve()
+
+    # Safety: ensure dest_dir is under WEB_DIR
+    if WEB_DIR.resolve() not in dest_dir.parents:
+        raise HTTPException(status_code=400, detail="Invalid destination")
+
+    if dest_dir.exists():
+        if not overwrite:
+            raise HTTPException(status_code=400, detail="Project already exists (enable overwrite)")
+        shutil.rmtree(dest_dir)
+
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    saved = 0
+    skipped = 0
+
+    for uf in files:
+        # uf.filename will contain the relative path (often includes the chosen folder root)
+        rel = uf.filename.replace("\\", "/")
+
+        # Strip the selected root folder prefix if present
+        prefix = root_folder.strip("/").strip("\\") + "/"
+        if rel.startswith(prefix):
+            rel = rel[len(prefix):]
+
+        # If the browser sends just a filename sometimes, keep it
+        rel_path = _safe_relpath(rel)
+
+        # Extension allowlist (skip silently or error; here we skip)
+        ext = rel_path.suffix.lower()
+        if ext and ext not in UPLOAD_ALLOWED_EXTS:
+            skipped += 1
+            continue
+
+        out_path = (dest_dir / rel_path).resolve()
+
+        # Ensure output stays inside dest_dir
+        if dest_dir not in out_path.parents and out_path != dest_dir:
+            raise HTTPException(status_code=400, detail="Invalid upload path")
+
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        data = await uf.read()
+        out_path.write_bytes(data)
+        saved += 1
+
+    # Helpful: ensure an index.html exists at project root (optional)
+    has_index = (dest_dir / "index.html").exists()
+
+    return {
+        "status": "ok",
+        "project": project_name,
+        "saved_files": saved,
+        "skipped_files": skipped,
+        "has_index": has_index
+    }
 
 @app.get("/edit/file")
 def read_file(
