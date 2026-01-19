@@ -33,6 +33,7 @@ function runCommand() {
         print("  open <name>        open a project");
         print("  edit <name>        edit project html");
         print("  new <name>         create a new project");
+        print("  upload             upload a folder as a web project");
         print("  delete <name>      delete a project");
         print("  clear              clear screen");
         print("  hack               ----");
@@ -83,6 +84,13 @@ function runCommand() {
                 }
             });
 
+        return;
+    }
+
+    // ---- UPLOAD PROJECT ----
+    if (cmd === "upload") {
+        print("Opening upload interface...");
+        window.open("/hack/upload.html", "_blank");
         return;
     }
 
@@ -162,10 +170,16 @@ function runCommand() {
     print("Unknown command. Type 'help'.");
 }
 
+function runUpload() {
+    input.value = "upload";
+    runCommand();
+}
+
 function runHack() {
     input.value = "hack";
     runCommand();
 }
+
 let matrixInterval = null;
 
 function startTerminalMatrix(duration = 4000) {
