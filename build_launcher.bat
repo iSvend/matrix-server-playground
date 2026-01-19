@@ -16,6 +16,8 @@ echo Running PyInstaller...
 echo.
 
 python -m PyInstaller launcher.py ^
+  --name "Finley_Private_Server" ^
+  --icon matrix.ico ^
   --add-data "python;python" ^
   --add-data "app.py;." ^
   --add-data "matrix.py;." ^
@@ -29,3 +31,4 @@ echo ======================================
 echo.
 
 pause
+endlocal
