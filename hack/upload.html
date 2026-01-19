@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Upload Project</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/hack/style.css" />
+  <style>
+    .panel {
+      max-width: 860px;
+      margin: 24px auto;
+      padding: 18px;
+      border: 1px solid #0f0;
+      background: rgba(0,0,0,0.75);
+      border-radius: 10px;
+    }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    input[type="text"] { width: 320px; padding: 8px; }
+    .hint { opacity: 0.85; }
+    .status { white-space: pre-wrap; margin-top: 12px; }
+    button { padding: 10px 14px; border: 1px solid #0f0; background: black; color: #0f0; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<div class="panel">
+  <h2>Upload a Project Folder</h2>
+  <p class="hint">Choose a folder that contains an <code>index.html</code> (plus any CSS/JS/assets). We’ll copy it into <code>/web/&lt;ProjectName&gt;/</code>.</p>
+
+  <div class="row">
+    <label>Project Name:</label>
+    <input id="projectName" type="text" placeholder="MyWebsite" />
+    <label style="margin-left:12px;">
+      <input id="overwrite" type="checkbox" />
+      overwrite if exists
+    </label>
+  </div>
+
+  <div class="row" style="margin-top:12px;">
+    <input id="folderInput" type="file" webkitdirectory multiple />
+    <button id="uploadBtn" disabled>UPLOAD</button>
+    <button id="openBtn" disabled>OPEN SITE</button>
+  </div>
+
+  <div id="status" class="status"></div>
+</div>
+
+<script src="/hack/upload.js"></script>
+</body>
+</html>
