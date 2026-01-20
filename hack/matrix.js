@@ -8,8 +8,9 @@ function print(line = "") {
     terminal.scrollTop = terminal.scrollHeight;
 }
 
-print("WELCOME TO THE MATRIX");
-print("Type 'help' for commands.");
+print("SERVER STATUS: RUNNING");
+print("Welcome to your terminal.");
+print("Type 'help' for list of commands.");
 
 input.addEventListener("keydown", function (e) {
     if (e.key === "Enter") {
